@@ -1,0 +1,115 @@
+---
+title: "박현종T R 수행평가"
+output:
+  html_document:
+    df_print: paged
+  pdf_document: default
+date: "2022-10-12"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## 박현종T R 수행평가 해석
+현종선생님의 수행평가를 대비한 직전 수업을 자세히 해석한 글입니다.  
+프린트의 내용에 기반하였지만, 설명을 위해 조금 변형한 부분이 있습니다.  
+그러나 전체적인 내용은 동일합니다.  
+
+### 패키지 설치
+
+먼저, 필요한 패키지들을 설치하여야 합니다.  
+* readxl : 엑셀파일을 읽고 분석할 수 있게 하는 패키지입니다.  
+* tidyverse : 데이터 분석에 특화된 기능들을 제공하는 패키지입니다.
+
+```r
+install.packages('readxl')
+install.packages('tidyverse')
+```
+
+설치후에는 library()를 이용하여 패키지를 로드합니다.  
+```{r include=FALSE}
+library(readxl)
+library(tidyverse)
+```
+
+
+### 엑셀 파일 불러오기
+
+readxl 패키지의 read_exel 함수를 이용하여, 엑셀파일을 불러옵니다.  
+%>%는 **파이프 연산자**라고 하는 tidyverse의 특수한 연산자인데, 이전 함수의 결과를 다음 함수의 인수로 이용할 수 있게 합니다.  
+즉, f(x) %>% g()는 g(f(x)) 입니다. 합성함수를 생각하면 됩니다.  
+
+아래 구문은 file.choose()로 파일 선택기를 열고, 사용자가 선택한 파일을 read_excel()함수로 분석하여 size변수에 대입합니다.
+```{r message=FALSE}
+size <- file.choose() %>% read_excel()
+
+str(size) 
+#str함수는 데이터의 구조를 출력해줍니다.
+```
+
+그러면, 이렇게 입력받은 엑셀파일에서 데이터를 추출하여 봅시다.  
+attach() 함수는 엑셀파일의 데이터를 R 검색경로에 추가시켜줍니다.  
+이 함수를 사용한 뒤에는 size$\`002. 키\`로 할 필요 없이, \`002. 키\`와 같이 바로 데이터에 접근 할 수 있습니다.  
+변수명에 벡틱(`)을 넣는 이유는 변수명에 띄어쓰기가 있기 때문입니다.
+
+```{r}
+attach(size)
+head(`002. 키`)
+#head함수는 데이터의 앞부분을 잘라내어 출력해줍니다.
+```
+
+### 데이터를 가공하여 출력하기
+그럼, 읽어들인 엑셀 데이터를 가공하여 키 도수분포그래프를 출력해보겠습니다.  
+먼저 키가 mm단위이므로 0.1을 곱하여 cm단위로 만들어주고, 최소, 평균, 중앙값을 계산해봅니다.  
+```{r message=FALSE}
+size$`002. 키` <- size$`002. 키` * 0.1 
+attach(size) #데이터에 변형을 가한 후에는, 다시 attach를 해주어야 변경사항이 반영됩니다.
+summary(`002. 키`, na.rm=TRUE) #size$`002. 키` 대신 `002. 키`를 이용할 수 있는 것은 attach(size) 덕분입니다.
+# summary함수는 데이터의 최소값, 평균값, 최댓값, 삼분위값을 한번에 계산해줍니다. na.rm은 누락 데이터를 삭제하는 옵션이고, TRUE는 T와 같습니다.
+```
+그럼, 히스토그램과 정규분포를 그려봅시다.  
+```{r}
+hist(`002. 키`, breaks=seq(140,192,2), probability=T,
+     #breaks는 히스토그램을 어떻게 나눌지 정해줍니다. 이 경우에는 최소를 140으로, 최대를 192로, 간격을 2로 합니다.
+     #probability는 개수 대신 백분율로 값을 나타내어주는 옵션입니다. 마찬가지로 T는 TRUE입니다.
+     xlab='hight(cm)', ylab='상대도수', main='8th 인체지수_키', ylim=c(0,0.07), col='lightskyblue')
+#xlab은 x축 라벨, ylab은 y축 라벨, main은 히스토그램 이름, ylim은 y축의 최솟값과 최댓값, col은 색깔입니다.
+
+points(seq(140,192,2), dnorm(seq(140,192,2), mean(`002. 키`), sd(`002. 키`)), type='l', col='black')
+#점을 찍고 선을 이어주는 함수입니다. dnorm()함수는 정규분포의 확률밀도함수를 만들어줍니다.
+#mean() 함수는 데이터의 평균을, sd()함수는 표준편차를 각각 반환합니다.
+#type은 그래프의 종류로, 'l'은 line, 선을 의미합니다.
+```
+
+데이터를 보면 알 수 있듯이 히스토그램이 정규분포그래프와 멀리 떨어져 있음을 알 수 있습니다.  
+이는 남자와 여자의 데이터를 분리하지 않았기 때문으로, 이 두 데이터를 분리해보겠습니다.  
+
+### 남/녀 데이터의 분리
+남녀 데이터를 분리하기 위해서 filter() 함수와 파이프 연산자를 이용합니다.
+```{r}
+size_male <- size %>% filter(성별=='남')
+size_female <- filter(size, 성별=='여') #%>% 연산자는 이렇게 변환됩니다.
+```
+
+
+이 데이터를 바탕으로 아까 했듯이 두개의 히스토그램을 그려봅시다.
+```{r, message=FALSE}
+attach(size_female) #female을 attach하여 변수 `002. 키`가 여자만의 데이터를 가지게 합니다.
+
+hist(`002. 키`, breaks=seq(140,192,2), probability=T, ylim=c(0,0.07),
+     col=adjustcolor('red',alpha=0.3), ann=FALSE, axes=F)
+# adjustcolor는 색에 투명도를 설정해줍니다. alpha가 0에 가까울수록 투명해집니다.
+# ann은 그래프 이름과 축 이름을, axes는 축을 표시할지 정하는 옵션입니다. F는 FALSE와 같습니다.
+
+points(seq(140,192,2), dnorm(seq(140,192,2), mean(`002. 키`), sd(`002. 키`)), type='l', col='black')
+
+par(new=T) 
+# 새로운 그래프를 그릴떄, 이전의 그래프위에 겹쳐서 표시하여 주는 옵션입니다. TRUE로 설정하지 않으면 기존의 female 히스토그램을 지우게 됩니다.
+
+attach(size_male)
+hist(`002. 키`, breaks=seq(140,192,2), probability=T, ylim=c(0,0.07),
+     col=adjustcolor('blue',alpha=0.3), xlab='hight(cm)', ylab='상대도수', main='8th 인체치수조사_키')
+
+points(seq(140,192,2), dnorm(seq(140,192,2), mean(`002. 키`), sd(`002. 키`)), type='l', col='black')
+```
